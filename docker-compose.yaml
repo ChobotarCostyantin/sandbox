@@ -1,0 +1,12 @@
+services:
+  sandbox.db:
+    container_name: sandbox-database
+    image: mongo:latest
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb:/data/db
+
+volumes:
+  mongodb:
