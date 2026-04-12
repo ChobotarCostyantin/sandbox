@@ -4,13 +4,13 @@ import edu.chobotar.sandbox.model.User;
 import edu.chobotar.sandbox.repository.UserRepository;
 import edu.chobotar.sandbox.request.UserCreateRequest;
 import edu.chobotar.sandbox.request.UserUpdateRequest;
+import edu.chobotar.sandbox.response.ApiResponse;
+import edu.chobotar.sandbox.response.BaseMetaData;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 /*
   @author User
@@ -25,19 +25,19 @@ import java.util.NoSuchElementException;
 public class UserService {
     private final UserRepository userRepository;
 
-    private final List<User> users = new ArrayList<>(); {
-        users.add(new User("Олег Максимчук", "Tom_oleg", "maksimchuk@gmail.com", "0951234567", "Мопс"));
-        users.add(new User("Валерій Адамко", "Roxaan", "adamko@gmail.com", "0957654321", "Бандеромобіль"));
-        users.add(new User("Михайло Скорейко", "Tesey", "skoreyko@gmail.com", "0951237654", "Бомбардіро Крокоділо"));
-        users.add(new User("В'ячеслав Москалюк", "Ikaut", "moskaliuk@gmail.com", "0985358765", "Швайн"));
-    }
+//    private final List<User> users = new ArrayList<>(); {
+//        users.add(new User("Олег Максимчук", "Tom_oleg", "maksimchuk@gmail.com", "0951234567", "Мопс"));
+//        users.add(new User("Валерій Адамко", "Roxaan", "adamko@gmail.com", "0957654321", "Бандеромобіль"));
+//        users.add(new User("Михайло Скорейко", "Tesey", "skoreyko@gmail.com", "0951237654", "Бомбардіро Крокоділо"));
+//        users.add(new User("В'ячеслав Москалюк", "Ikaut", "moskaliuk@gmail.com", "0985358765", "Швайн"));
+//    }
 
     @PostConstruct
     void init() {
-        userRepository.deleteAll();
-        for (User user: users) {
-            create(user);
-        }
+//        userRepository.deleteAll();
+//        for (User user: users) {
+//            create(user);
+//        }
 
     }
 
@@ -48,7 +48,7 @@ public class UserService {
 
     public User getById(String id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("User with id " + id + " not found"));
+                .orElse(null);
     }
 
     public User create(User user) {
@@ -95,5 +95,52 @@ public class UserService {
 
     public Boolean emailIsTaken(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    //---------------------------------------- 11.04.26 response impl ---------------------------------------
+    public ApiResponse<BaseMetaData, User> getAllAsApiResponse() {
+        List<User> users = userRepository.findAll();
+        if (users.isEmpty()) {
+            return new ApiResponse<>(new BaseMetaData(404, false, "No users found"), null);
+        }
+        return new ApiResponse<>(new BaseMetaData(), users);
+    }
+
+    public ApiResponse<BaseMetaData, User> getByIdAsApiResponse(String id) {
+        return userRepository.findById(id)
+                .map(user -> new ApiResponse<>(new BaseMetaData(), user))
+                .orElseGet(() -> new ApiResponse<>(new BaseMetaData(404, false, "User not found")));
+    }
+
+    public ApiResponse<BaseMetaData, User> createAsApiResponse(User user) {
+        User newUser = userRepository.save(user);
+        return new ApiResponse<>(new BaseMetaData(201, true), newUser);
+    }
+
+    public ApiResponse<BaseMetaData, User> createAllAsApiResponse(List<User> users) {
+        List<User> newUsers = userRepository.saveAll(users);
+        return new ApiResponse<>(new BaseMetaData(201, true), newUsers);
+    }
+
+    public ApiResponse<BaseMetaData, User> updateAsApiResponse(User user) {
+        if (user.getId() == null || !userRepository.existsById(user.getId())) {
+            return new ApiResponse<>(new BaseMetaData(404, false, "User not found"));
+        }
+        User updated = userRepository.save(user);
+        return new ApiResponse<>(new BaseMetaData(), updated);
+    }
+
+    public ApiResponse<BaseMetaData, User> deleteByIdAsApiResponse(String id) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    userRepository.deleteById(id);
+                    return new ApiResponse<>(new BaseMetaData(), user);
+                })
+                .orElseGet(() -> new ApiResponse<>(new BaseMetaData(404, false, "User not found")));
+    }
+
+    public ApiResponse<BaseMetaData, User> deleteAllAsApiResponse() {
+        userRepository.deleteAll();
+        return new ApiResponse<>(new BaseMetaData(204, true), null);
     }
 }
