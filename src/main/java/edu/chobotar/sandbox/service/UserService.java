@@ -3,11 +3,17 @@ package edu.chobotar.sandbox.service;
 import edu.chobotar.sandbox.model.User;
 import edu.chobotar.sandbox.repository.UserRepository;
 import edu.chobotar.sandbox.request.UserCreateRequest;
+import edu.chobotar.sandbox.request.UserPageRequest;
 import edu.chobotar.sandbox.request.UserUpdateRequest;
 import edu.chobotar.sandbox.response.ApiResponse;
 import edu.chobotar.sandbox.response.BaseMetaData;
+import edu.chobotar.sandbox.response.PaginationMetaData;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -142,5 +148,34 @@ public class UserService {
     public ApiResponse<BaseMetaData, User> deleteAllAsApiResponse() {
         userRepository.deleteAll();
         return new ApiResponse<>(new BaseMetaData(204, true), null);
+    }
+
+    //---------------------------------------- 19.04.26 pagination impl ---------------------------------------
+    public ApiResponse<PaginationMetaData, User> getUsersPage(UserPageRequest request) {
+        Pageable pageable = PageRequest.of(request.page(), request.size(),
+                Sort.by(Sort.Direction.DESC, "id"));
+
+        Page<User> page = userRepository.findAll(pageable);
+
+        PaginationMetaData metaData = new PaginationMetaData();
+        metaData.setCode(200);
+        metaData.setSuccess(true);
+        metaData.setErrorMessage(null);
+
+        metaData.setNumber(page.getNumber());
+        metaData.setSize(page.getSize());
+        metaData.setTotalElements((int) page.getTotalElements());
+        metaData.setTotalPages(page.getTotalPages());
+        metaData.setFirst(page.isFirst());
+        metaData.setLast(page.isLast());
+
+        if (page.getTotalElements() == 0) {
+            metaData.setErrorMessage("Warning: The list is empty.");
+        } else if (request.page() >= page.getTotalPages()) {
+            metaData.setErrorMessage("Warning: Page value is out of range.");
+            metaData.setLast(false);
+        }
+
+        return new ApiResponse<>(metaData, page.getContent());
     }
 }
